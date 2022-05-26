@@ -1,21 +1,21 @@
-# Email-Action-Agent
+# Email Action Agent
 
 ## Prerequisites
-- The network to which the server on which IoT is installed is connected needs to allow the sending of e-mails (SMTP port should not be blocked).
-- Visual Studio (any version that supports .Net Core 2.1)
-- [XMPro IoT Framework NuGet package](https://www.nuget.org/packages/XMPro.IOT.Framework/3.0.2-beta)
-- Please see the [Building an Agent for XMPro IoT](https://docs.xmpro.com/lessons/writing-an-agent-for-xmpro-iot/) guide for a better understanding of how the XMPro IoT Framework works
+- Visual Studio
+- [XMPro IoT Framework NuGet package](https://www.nuget.org/packages/XMPro.IOT.Framework/)
+- Please see the [Manage Agents](https://documentation.xmpro.com/how-tos/manage-agents) guide for a better understanding of how the Agent Framework works
 
 ## Description
 The Email action agent allows an e-mail to be sent in the stream at any point in the data flow.
 
 ## How the code works
-All settings referred to in the code need to correspond with the settings defined in the template that has been created for the agent using the Stream Integration Manager. Refer to the [Stream Integration Manager](https://docs.xmpro.com/courses/packaging-an-agent-using-stream-integration-manager/) guide for instructions on how to define the settings in the template and package the agent after building the code. 
+All settings referred to in the code need to correspond with the settings defined in the template that has been created for the agent using the XMPro Package Manager. Refer to the [XMPro Package Manager](https://documentation.xmpro.com/agent/packaging-agents/) guide for instructions on how to define the settings in the template and package the agent after building the code. 
 
-After packaging the agent, you can upload it to XMPro IoT and start using it.
+After packaging the agent, you can upload it to the XMPro Data Stream Designer and start using it.
 
 ### Settings
 When a user needs to use the *Email Action Agent*, they need to provide a number of settings. To get the parent outputs, use the following code: 
+
 ```csharp
 private List<XMIoT.Framework.Attribute> ParentOutputs {
   get
@@ -32,6 +32,7 @@ private List<XMIoT.Framework.Attribute> ParentOutputs {
 ```
 
 The user needs to specify an SMTP server and port that can be used.
+
 ```csharp
 private string SMTPServer { get { return this.config["SMTPServer"]; } }
 private int SMTPPort
@@ -45,6 +46,7 @@ private int SMTPPort
 ```
 
 If the user prefers to use default credentials, the *Use Default Credentials* check box needs to be selected. If not, he/ she needs to provide a username and password that can be used. 
+
 ```csharp
 private bool UseDefaultCredentials
 {
@@ -60,6 +62,7 @@ private string Password { get { return decrypt(this.config["Password"]); } }
 ```
 
 Next, the user needs to specify an address from which the e-mail will be sent as well as an address to which the e-mail needs to be sent. To get these values, use the code below.
+
 ```csharp
 private string From
 {
@@ -80,13 +83,15 @@ private string[] To
 ```
 
 Get the subject and body of the e-mail:
+
 ```csharp
 private string Subject { get { return this.config["Subject"]; } }
 private string Body { get { return this.config["Body"]; } }
 ```
 
-### Configurations
+### Configuration
 In the *GetConfigurationTemplate* method, parse the JSON representation of the settings into the Settings object.
+
 ```csharp
 var settingsObj = Settings.Parse(template);
 new Populator(parameters).Populate(settingsObj);
@@ -120,12 +125,14 @@ PlaceHoldersGrid.DisableInsert = true;
 ```
 
 If the placeholders grid is not empty, create a drop down that will contain the mapping options. These options will come from this agent's parent agent and can be mapped to any place holder added in the *Body* field.
+
 ```csharp
 DropDown Mapping = PlaceHoldersGrid.Columns.First(s => s.Key == "Mapping") as DropDown;
 Mapping.Options = this.ParentOutputs.Select(l => new Option() { DisplayMemeber = l.Name, ValueMemeber = l.Name }).ToList();
 ```
 
 Get all the template fields.
+
 ```csharp
 var fields = new List<String>();
 fields = GetTemplateFields(Subject.Value, Body.Value).Keys.ToList();
@@ -133,6 +140,7 @@ fields = GetTemplateFields(Subject.Value, Body.Value).Keys.ToList();
 
 ### Validate
 When validating the stream, an error needs to be shown if there are rows added to the placeholders grid that are not mapped. Thus, if there are placeholders in the e-mail body that are not mapped to values.
+
 ```csharp
 List<string> errors = new List<string>();
 this.config = new Configuration() { Parameters = parameters };
@@ -148,12 +156,14 @@ foreach (var row in PlaceHoldersGrid.Rows)
 
 ### Create
 Set the config variable to the configuration received in the *Create* method. 
+
 ```csharp
 this.config = configuration;
 ```
 
 ### Start
 In the *Start* method, create a new instance of the *SmtpClient* class. Specify the event handler that should be called when the *SmtpClient.SendCompleted* event is raised. This event will be raised after an asynchronous e-mail has been sent. Set the SMTP host and port to the values the user specified and set *Smpt.EnableSsl* to true. 
+
 ```csharp
 smtp = new SmtpClient();
 smtp.SendCompleted += Smtp_SendCompleted;
@@ -163,6 +173,7 @@ smtp.EnableSsl = true;
 ```
 
 Set *Smpt.UseDefaultCredentials* to the value the user specified. If the user did not choose to use default credentials, set the credentials to his/her username as specified on the configuration page. 
+
 ```csharp
 smtp.UseDefaultCredentials = UseDefaultCredentials;
   if (smtp.UseDefaultCredentials == false)
@@ -170,6 +181,7 @@ smtp.UseDefaultCredentials = UseDefaultCredentials;
 ```
 
 Add an event handler to your code to handle the *SendCompleted* event.
+
 ```csharp
 private async void Smtp_SendCompleted(object sender, System.ComponentModel.AsyncCompletedEventArgs e)
 {
@@ -185,12 +197,14 @@ There is no need to do anything in the *Destroy* method.
 
 ### Publishing Events
 Because this agent will be receiving events, the *Receive* method needs to be implemented. Create a new Grid and set its value to the PlaceHolders grid.
+
 ```csharp
 var grid = new Grid();
 grid.Value = this.config["PlaceHolders"];
 ```
 
 For each of the events received, start by getting the event, convert it to a dictionary and then create a new message. Next, set the subject and body of the e-mail. Lastly, send the e-mail.
+
 ```csharp
 foreach (JObject _event in events)
 {
@@ -203,11 +217,13 @@ foreach (JObject _event in events)
 ```
 
 Publish the events by invoking the OnPublish event.
+
 ```csharp
 this.OnPublish?.Invoke(this, new OnPublishArgs(events));
 ```
 ### Decrypting Values
 Since this agent needs secure settings (Password), the values will automatically be encrypted. Use the following code to decrypt the values.
+
 ```csharp
 private string decrypt(string value)
 {
@@ -217,9 +233,9 @@ private string decrypt(string value)
 }
 ```
 
-### Custom Methods
+### Helper Methods
 ### Get New Message
-The e-mail action agent uses several custom methods. The first of these methods creates and returns a new e-mail message. The newly created message is of type *MailMessage*, which represents an e-mail message that can be sent using the *SmptClient* class. In this method, start by creating a new instance of the *MailMessage* class and set the *IsBodyHtml* property to *true*. Next, set the e-mail address from which the e-mail should be sent. Make sure that the *To* field of the message object is cleared and add each e-mail address that the user specified to the list of addresses the e-mail needs to be sent to.
+The *Email Action Agent* uses several helper methods. The first of these methods creates and returns a new e-mail message. The newly created message is of type *MailMessage*, which represents an e-mail message that can be sent using the *SmptClient* class. In this method, start by creating a new instance of the *MailMessage* class and set the *IsBodyHtml* property to *true*. Next, set the e-mail address from which the e-mail should be sent. Make sure that the *To* field of the message object is cleared and add each e-mail address that the user specified to the list of addresses the e-mail needs to be sent to.
 
 ```csharp
 private MailMessage GetNewMessage(JObject record)
